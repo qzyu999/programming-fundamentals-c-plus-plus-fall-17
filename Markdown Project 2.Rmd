@@ -1,0 +1,267 @@
+---
+title: "Project 2 markdown final"
+author: "Jared Yu"
+date: "December 5, 2017"
+output:
+  html_document:
+    df_print: paged
+---
+```{r}
+#Set the working directory
+setwd("C:/Users/jyqq9/Desktop/STA 108/Project 2")
+
+#Read in the data from the text file
+mydata = read.table("diabetes.txt", header=T)
+
+#Examine the data
+head(mydata)
+dim(mydata)
+
+#1
+#The quantiative variables are chol, stab.glu, hdl, ratio, glyhb, age, height, weight,
+#bp.1s, bp.1d, waist, hip, time.ppn. The qualitative variables are location, gender, and frame.
+
+#histogram for each quantiative variable
+#chol's distribution
+quantvar1 = subset(mydata, select = c(chol))
+hist(quantvar1$chol)
+
+#stab.glu's distribution
+quantvar2 = subset(mydata, select = c(stab.glu))
+hist(quantvar2$stab.glu)
+
+#hdl's distribution
+quantvar3 = subset(mydata, select = c(hdl))
+hist(quantvar3$hdl)
+
+#ratio's distribution
+quantvar4 = subset(mydata, select = c(ratio))
+hist(quantvar4$ratio)
+
+#glyhb's distribution
+quantvar5 = subset(mydata, select = c(glyhb))
+hist(quantvar5$glyhb)
+
+#age's distribution
+quantvar6 = subset(mydata, select = c(age))
+hist(quantvar6$age)
+
+#height's distribution
+quantvar7 = subset(mydata, select = c(height))
+hist(quantvar7$height)
+
+#weight's distribution
+quantvar8 = subset(mydata, select = c(weight))
+hist(quantvar8$weight)
+
+#bp.1s' distribution
+quantvar9 = subset(mydata, select = c(bp.1s))
+hist(quantvar9$bp.1s)
+
+#bp.1d's distribution
+quantvar10 = subset(mydata, select = c(bp.1d))
+hist(quantvar10$bp.1d)
+
+#waist's distribution
+quantvar11 = subset(mydata, select = c(waist))
+hist(quantvar11$waist)
+
+#hip's distribution
+quantvar12 = subset(mydata, select = c(hip))
+hist(quantvar12$hip)
+
+#time.ppn's distribution
+quantvar13 = subset(mydata, select = c(time.ppn))
+hist(quantvar13$time.ppn)
+
+#pie chart for each qualitative variable
+#Load MASS package for the table function
+library(MASS)
+
+#location's distribution
+qualvar1 = subset(mydata, select = c(location))
+location = qualvar1$location
+location.pie = table(location)
+pie(location.pie)
+
+#gender's distribution
+qualvar2 = subset(mydata, select = c(gender))
+gender = qualvar2$gender
+gender.pie = table(gender)
+pie(gender.pie)
+
+#frame's distribution
+qualvar3 = subset(mydata, select = c(frame))
+frame = qualvar3$frame
+frame.pie = table(frame)
+pie(frame.pie)
+
+#draw a scatterplot matrix and obtain the pairwise correlation matrix for all
+#quantiative variables in the data
+quantvarmatrix = mydata[c(1:5,7,9:10,12:16)]
+pairs(quantvarmatrix)
+
+#2
+#regress glybh on all predictor variables
+Model1 = lm(glyhb~.,data=mydata)
+plot(Model1)
+
+#3
+library(MASS)
+boxcox(mydata$glyhb~.,data=mydata)
+Model2 = lm(1/mydata$glyhb~., data=mydata)
+plot(Model2)
+boxcox(Model2)
+
+#4
+set.seed(10) #set seed for random number generator
+            #so everyone gets the same split of the data.
+N=nrow(mydata) #number of observations in the data 
+index=sample(1:N, size=N/2, replace=FALSE) #randomly sample 
+                #N/2 observation to form the training data.
+data.t=mydata[index,] #get the training data set
+data.v=mydata[-index,] #the remaining N/2 observations form the validation set
+
+#5
+Model3 = lm(1/data.t$glyhb~., data=data.t)
+summary(Model3)
+length(Model3$coefficients) #of regression coefficients
+summary(Model3)$sigma^2 #MSE from this model
+
+#6
+library(leaps)
+best = regsubsets(1/data.t$glyhb~., data=data.t, nbest=1, nvmax=16)
+sum_sub=summary(best)
+sum_sub$which
+n=nrow(data.t)
+n
+p.m=2:17
+sse=sum_sub$rss
+sse
+aic=n*log(sse)+2*p.m-n*log(n)
+aic
+bic=n*log(sse)+log(n)*p.m-n*log(n)
+bic
+res_sub=cbind(sum_sub$which,sse,sum_sub$rsq,sum_sub$adjr2,sum_sub$cp,aic, bic)
+fit0=lm(1/data.t$glyhb~1,data=data.t) # fit the model with only intercept
+sse1=sum(fit0$residuals^2)
+p=1
+c1=sse1/0.001384-(n-2*p)
+aic1=n*log(sse1)+2*p-n*log(n)
+bic1=n*log(sse1)+log(n)*p-n*log(n)
+none=c(1,rep(0,16),sse1,0,0,c1,aic1,bic1)
+res_sub=rbind(none,res_sub) # combine the results with other models
+colnames(res_sub)=c(colnames(sum_sub$which),"sse", "R^2", "R^2_a", "Cp", "aic", "bic")
+res_sub
+
+#Model 3.1, 3.2, 3.3
+#Create qualitative variable framesmall
+is.factor(data.t[,11]) #TRUE
+summary(data.t$frame)
+small.index=which(data.t$frame=="small")
+small.index #observations of frame = small
+#data.t[1:11]
+n=dim(data.t)[1]
+X11s=rep(0,n)
+X11s[small.index]=1 #small = 1, rest are 0
+
+Model3.1=lm(1/data.t$glyhb ~ stab.glu + ratio + age + X11s + waist,data=data.t) #AIC selected
+Model3.2=lm(1/data.t$glyhb~.,data=data.t[c(2,7,14)]) #BIC selected
+Model3.3=lm(1/data.t$glyhb~ stab.glu + ratio + age + X11s + waist + time.ppn,data=data.t) #AdjR^2 selected
+
+#7
+Model4=lm(1/data.t$glyhb~.^2,data=data.t)
+length(Model4$coefficients) #136
+summary(Model4)$sigma^2 #0.001036088
+
+#8
+#fit0=lm(1/mydata$glyhb~1,data=mydata)
+fit0=lm(1/data.t$glyhb~1,data=data.t)
+fs1=stepAIC(fit0,scope=list(upper=Model4,lower=~1),direction="both",k=2)
+# Step:  AIC=-1205.14
+# 1/data.t$glyhb ~ stab.glu + age + waist + ratio + stab.glu:ratio + 
+#   age:ratio
+sse.fs1=sum(fs1$residuals^2)
+p.fs1=length(fs1$coefficients)
+
+#9
+fs2=stepAIC(Model3,scope=list(upper=Model4,lower=~1),direction="both",k=2)
+# Step:  AIC=-1230.61
+# 1/data.t$glyhb ~ chol + stab.glu + hdl + ratio + age + gender + 
+#   height + weight + bp.1s + bp.1d + waist + hip + time.ppn + 
+#   stab.glu:gender + hdl:ratio + age:bp.1d + weight:bp.1s + 
+#   age:hip + hip:time.ppn + gender:height + stab.glu:bp.1s + 
+#   stab.glu:time.ppn + stab.glu:waist + age:waist + chol:time.ppn + 
+#   hdl:weight + bp.1d:waist + weight:hip
+
+#10
+n = nrow(data.t)
+bic.fs1=n*log(sse.fs1)+p.fs1*log(n)-n*log(n)
+bic.fs1 #-1182.677
+sse.fs2=sum(fs2$residuals^2)
+p.fs2=length(fs2$coefficients)
+bic.fs2=n*log(sse.fs2)+p.fs2*log(n)-n*log(n)
+bic.fs2 #-1137.536
+
+#set Models 4.1 and 4.2
+Model4.1 = fs2
+Model4.2 = fs1
+
+#11
+PRESSModel3.1 = sum(Model3.1$residuals^2/(1-influence(Model3.1)$hat)^2)
+PRESSModel3.2 = sum(Model3.2$residuals^2/(1-influence(Model3.2)$hat)^2)
+PRESSModel3.3 = sum(Model3.3$residuals^2/(1-influence(Model3.3)$hat)^2)
+PRESSModel4.1 = sum(Model4.1$residuals^2/(1-influence(Model4.1)$hat)^2)
+PRESSModel4.2 = sum(Model4.2$residuals^2/(1-influence(Model4.2)$hat)^2)
+PRESSModel3.1 #0.252777
+PRESSModel3.2 #0.2539834
+PRESSModel3.3 #0.252575
+PRESSModel4.1 #0.2171946
+PRESSModel4.2 #0.2534834
+
+#12
+Yhat.3.1 = predict(Model3.1, newdata=data.v)
+Y.3.1 = 1/data.v[,5]
+m = nrow(data.v)
+MSPR.3.1 = sum((Yhat.3.1-Y.3.1)^2)/m
+MSPR.3.1 #0.001368448
+Yhat.3.2 = predict(Model3.2, newdata=data.v)
+Y.3.2 = 1/data.v[,5]
+MSPR.3.2 = sum((Yhat.3.2-Y.3.2)^2)/m
+MSPR.3.2 #0.001377312
+Yhat.3.3 = predict(Model3.3, newdata=data.v)
+Y.3.3 = 1/data.v[,5]
+MSPR.3.3 = sum((Yhat.3.3-Y.3.3)^2)/m
+MSPR.3.3 #0.00134099
+Yhat.4.1 = predict(Model4.1, newdata=data.v)
+Y.4.1 = 1/data.v[,5]
+MSPR.4.1 = sum((Yhat.4.1-Y.4.1)^2)/m
+MSPR.4.1 #0.001797609
+Yhat.4.2 = predict(Model4.2, newdata=data.v)
+Y.4.2 = 1/data.v[,5]
+MSPR.4.2 = sum((Yhat.4.2-Y.4.2)^2)/m
+MSPR.4.2 #0.00152642
+m = nrow(data.t)
+PRESSModel3.1/m #0.001381295
+PRESSModel3.2/m #0.001387887
+PRESSModel3.3/m #0.001380191
+PRESSModel4.1/m #0.001186856
+PRESSModel4.2/m #0.001385155
+
+#13
+#Re-create qualitative variable framesmall with 'mydata'
+is.factor(mydata[,11]) #TRUE
+summary(mydata$frame)
+small.index2=which(mydata$frame=="small")
+small.index2 #observations of frame = small
+#data.t[1:11]
+n=dim(mydata)[1]
+X11s2=rep(0,n)
+X11s2[small.index2]=1 #small = 1, rest are 0
+#Create Model 5
+Model5 = lm(1/mydata$glyhb ~ stab.glu + ratio + age + X11s2 + waist + time.ppn, data=mydata)
+summary(Model5)
+anova(Model5)
+
+```
+
